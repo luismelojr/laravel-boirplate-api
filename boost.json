@@ -1,0 +1,22 @@
+{
+    "agents": [
+        "junie",
+        "claude_code",
+        "opencode"
+    ],
+    "cloud": true,
+    "guidelines": true,
+    "mcp": true,
+    "nightwatch": false,
+    "packages": [
+        "spatie/laravel-query-builder"
+    ],
+    "sail": true,
+    "skills": [
+        "laravel-best-practices",
+        "configuring-horizon",
+        "pest-testing",
+        "laravel-query-builder",
+        "deploying-laravel-cloud"
+    ]
+}
