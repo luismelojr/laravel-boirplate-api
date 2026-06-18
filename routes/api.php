@@ -10,6 +10,8 @@ Route::prefix('v1')->group(function () {
     // All routes below require a valid X-Tenant-ID header
     Route::middleware('ensure_tenant')->group(function () {
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:auth');
+        Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+        Route::post('reset-password', [AuthController::class, 'resetPassword']);
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);

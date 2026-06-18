@@ -4,14 +4,20 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Dashboard;
 
+use App\Domain\Auth\Data\ForgotPasswordData;
 use App\Domain\Auth\Data\LoginUserData;
 use App\Domain\Auth\Data\RegisterData;
+use App\Domain\Auth\Data\ResetPasswordData;
+use App\Domain\Auth\Services\ForgotPasswordService;
 use App\Domain\Auth\Services\LoginUserService;
 use App\Domain\Auth\Services\LogoutUserService;
 use App\Domain\Auth\Services\RegisterTenantService;
+use App\Domain\Auth\Services\ResetPasswordService;
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\Dashboard\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Api\V1\Dashboard\Auth\LoginRequest;
 use App\Http\Requests\Api\V1\Dashboard\Auth\RegisterRequest;
+use App\Http\Requests\Api\V1\Dashboard\Auth\ResetPasswordRequest;
 use App\Http\Resources\Api\V1\Dashboard\Tenant\TenantResource;
 use App\Http\Resources\Api\V1\Dashboard\User\UserResource;
 use Illuminate\Http\JsonResponse;
@@ -58,5 +64,21 @@ class AuthController extends ApiController
             data: new UserResource($request->user()),
             message: 'Usuário autenticado'
         );
+    }
+
+    public function forgotPassword(ForgotPasswordRequest $request, ForgotPasswordService $service): JsonResponse
+    {
+        $data = ForgotPasswordData::from($request->validated());
+        $service->handle($data);
+
+        return $this->success([], 'Se este e-mail estiver cadastrado, você receberá um link em breve.');
+    }
+
+    public function resetPassword(ResetPasswordRequest $request, ResetPasswordService $service): JsonResponse
+    {
+        $data = ResetPasswordData::from($request->validated());
+        $service->handle($data);
+
+        return $this->success([], 'Senha redefinida com sucesso.');
     }
 }
