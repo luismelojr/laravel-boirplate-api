@@ -8,6 +8,7 @@ enum UserStatusEnum: string
 {
     case Active = 'active';
     case Inactive = 'inactive';
+    case Pending = 'pending';
 
     public static function values(): array
     {
