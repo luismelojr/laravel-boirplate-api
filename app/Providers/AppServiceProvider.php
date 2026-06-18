@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Telescope\TelescopeServiceProvider;
+use Spatie\Health\Checks\Checks\BackupsCheck;
 use Spatie\Health\Checks\Checks\DatabaseCheck;
 use Spatie\Health\Checks\Checks\HorizonCheck;
 use Spatie\Health\Checks\Checks\QueueCheck;
@@ -38,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
             RedisCheck::new(),
             HorizonCheck::new(),
             QueueCheck::new(),
+            BackupsCheck::new()->name('Backup')->onDisk('s3'),
         ]);
 
         VerifyEmail::createUrlUsing(function (object $notifiable) {
