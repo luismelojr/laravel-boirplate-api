@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Tenant\Finders\HeaderTenantFinder;
 use Illuminate\Broadcasting\BroadcastEvent;
 use Illuminate\Events\CallQueuedListener;
 use Illuminate\Mail\SendQueuedMailable;
@@ -21,7 +22,7 @@ return [
      * This class should extend `Spatie\Multitenancy\TenantFinder\TenantFinder`
      *
      */
-    'tenant_finder' => null,
+    'tenant_finder' => HeaderTenantFinder::class,
 
     /*
      * These fields are used by tenant:artisan command to match one or more tenant.

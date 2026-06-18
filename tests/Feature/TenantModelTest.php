@@ -1,8 +1,10 @@
 <?php
 
+use App\Domain\Tenant\Finders\HeaderTenantFinder;
 use App\Enums\TenantStatusEnum;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 
 uses(RefreshDatabase::class);
 
@@ -30,4 +32,35 @@ it('can set current tenant and retrieve it', function () {
 it('creates inactive tenant via factory state', function () {
     $tenant = Tenant::factory()->inactive()->create();
     expect($tenant->status)->toBe(TenantStatusEnum::Inactive);
+});
+
+it('HeaderTenantFinder resolves tenant from X-Tenant-ID header', function () {
+    $tenant = Tenant::factory()->create();
+
+    $request = Request::create('/');
+    $request->headers->set('X-Tenant-ID', $tenant->uuid);
+
+    $finder = new HeaderTenantFinder;
+    $found = $finder->findForRequest($request);
+
+    expect($found->uuid)->toBe($tenant->uuid);
+});
+
+it('HeaderTenantFinder returns null when header is missing', function () {
+    $request = Request::create('/');
+
+    $finder = new HeaderTenantFinder;
+
+    expect($finder->findForRequest($request))->toBeNull();
+});
+
+it('HeaderTenantFinder returns null for inactive tenant', function () {
+    $tenant = Tenant::factory()->inactive()->create();
+
+    $request = Request::create('/');
+    $request->headers->set('X-Tenant-ID', $tenant->uuid);
+
+    $finder = new HeaderTenantFinder;
+
+    expect($finder->findForRequest($request))->toBeNull();
 });
