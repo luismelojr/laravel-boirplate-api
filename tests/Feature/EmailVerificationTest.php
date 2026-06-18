@@ -63,7 +63,7 @@ it('verifies email with valid signed URL', function () {
     $url = URL::temporarySignedRoute(
         'verification.verify',
         now()->addHour(),
-        ['id' => $user->id, 'hash' => sha1($user->email)]
+        ['id' => $user->uuid, 'hash' => sha1($user->email)]
     );
 
     $path = parse_url($url, PHP_URL_PATH).'?'.parse_url($url, PHP_URL_QUERY);
@@ -82,7 +82,7 @@ it('rejects verify with invalid hash', function () {
     $url = URL::temporarySignedRoute(
         'verification.verify',
         now()->addHour(),
-        ['id' => $user->id, 'hash' => 'wronghash']
+        ['id' => $user->uuid, 'hash' => 'wronghash']
     );
 
     $path = parse_url($url, PHP_URL_PATH).'?'.parse_url($url, PHP_URL_QUERY);

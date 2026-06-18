@@ -111,7 +111,7 @@ class AuthController extends ApiController
             return $this->error('Link de verificação inválido ou expirado.', 403);
         }
 
-        $user = User::withoutGlobalScopes()->findOrFail($id);
+        $user = User::withoutGlobalScopes()->where('uuid', $id)->firstOrFail();
 
         if (! $service->verify($user, $hash)) {
             return $this->error('Link de verificação inválido.', 403);

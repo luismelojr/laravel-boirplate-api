@@ -17,7 +17,7 @@ class ResetPasswordService
         $record = DB::table('password_reset_tokens')
             ->where('email', $data->email)
             ->where('tenant_id', Tenant::current()->getKey())
-            ->where('token', $data->token)
+            ->where('token', hash('sha256', $data->token))
             ->first();
 
         if (! $record || now()->subHour()->isAfter($record->created_at)) {
@@ -27,7 +27,10 @@ class ResetPasswordService
         }
 
         $user = User::query()->where('email', $data->email)->firstOrFail();
-        $user->update(['password' => $data->password]);
+        $user->update([
+            'password' => $data->password,
+            'email_verified_at' => $user->email_verified_at ?? now(),
+        ]);
 
         DB::table('password_reset_tokens')
             ->where('email', $data->email)

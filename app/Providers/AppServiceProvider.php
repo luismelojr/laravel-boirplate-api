@@ -45,7 +45,7 @@ class AppServiceProvider extends ServiceProvider
                 'verification.verify',
                 now()->addMinutes(60),
                 [
-                    'id' => $notifiable->getKey(),
+                    'id' => $notifiable->uuid,
                     'hash' => sha1($notifiable->getEmailForVerification()),
                 ]
             );

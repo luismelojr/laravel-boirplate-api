@@ -25,6 +25,7 @@ class InviteUserService
                 'email' => $data->email,
                 'password' => Str::random(32),
                 'status' => UserStatusEnum::Pending,
+                'tenant_id' => $tenant->getKey(),
             ]);
 
             $user->assignRole($data->role);

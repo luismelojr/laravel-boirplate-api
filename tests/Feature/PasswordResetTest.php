@@ -43,7 +43,7 @@ it('resets password with valid token', function () {
     DB::table('password_reset_tokens')->insert([
         'email' => 'user@example.com',
         'tenant_id' => $this->tenant->id,
-        'token' => $token,
+        'token' => hash('sha256', $token),
         'created_at' => now(),
     ]);
 
@@ -103,7 +103,7 @@ it('allows login with new password after reset', function () {
     DB::table('password_reset_tokens')->insert([
         'email' => 'user@example.com',
         'tenant_id' => $this->tenant->id,
-        'token' => $token,
+        'token' => hash('sha256', $token),
         'created_at' => now(),
     ]);
 

@@ -28,7 +28,7 @@ class ForgotPasswordService
                 [
                     'email' => $data->email,
                     'tenant_id' => Tenant::current()->getKey(),
-                    'token' => $token,
+                    'token' => hash('sha256', $token),
                     'created_at' => now(),
                 ],
                 ['email', 'tenant_id'],
