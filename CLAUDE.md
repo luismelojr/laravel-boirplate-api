@@ -3,6 +3,10 @@
 This file provides guidance to Claude Code when working with code in this repository.
 
 **Project root:** `/Users/luis/code/projetos/boirplate`
+**Stack:** Laravel 13, PHP 8.5, MySQL 8.4, Redis, Sail/Docker, Pest v4
+**Type:** SaaS API boilerplate — multi-tenant, domain-driven, API-first, pt_BR
+
+---
 
 ## Commands
 
@@ -11,7 +15,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 vendor/bin/sail up -d
 vendor/bin/sail stop
 
-# Run all tests
+# Run all tests (66 tests)
 vendor/bin/sail artisan test --compact
 
 # Run a single test file or filter
@@ -23,7 +27,7 @@ vendor/bin/sail artisan make:test --pest FeatureName --no-interaction
 # Run database migrations
 vendor/bin/sail artisan migrate --no-interaction
 
-# Seed the database
+# Seed the database (RoleSeeder → TenantSeeder → UserSeeder)
 vendor/bin/sail artisan db:seed --no-interaction
 
 # Format PHP code (run after EVERY PHP change — mandatory)
@@ -32,45 +36,79 @@ vendor/bin/sail bin pint --dirty --format agent
 # Clear caches
 vendor/bin/sail artisan optimize:clear
 
-# Dev server (serve + queue + pail + vite via concurrently)
+# Run backup manually
+vendor/bin/sail artisan backup:run --no-interaction
+
+# Dev server
 vendor/bin/sail composer run dev
 ```
 
-> **Note:** All `sail` commands run from the project root `/Users/luis/code/projetos/boirplate`.
+---
 
 ## Architecture
 
 ### Domain-Driven Structure
 
-Business logic lives in `app/Domain/{Domain}/` organized into:
-- `Services/` — single-action classes with `handle()` method; one class per operation
-- `Data/` — DTOs extending `Spatie\LaravelData\Data`
-
-### API Layer
-
-Controllers live under `app/Http/Controllers/Api/V1/Dashboard/` and extend `ApiController` (uses `ApiResponse` trait).
+```
+app/Domain/{Domain}/
+  Services/   — single-action classes, one per operation, handle() method
+  Data/       — DTOs extending Spatie\LaravelData\Data
+app/Http/Controllers/Api/V1/Dashboard/
+  AuthController.php          — all auth endpoints
+  Admin/AdminUserController.php — admin-only endpoints
+app/Models/                   — Tenant, User, UserInvitation
+app/Traits/                   — HasUuid, ApiResponse, BelongsToTenant
+app/Enums/                    — TenantStatusEnum, UserStatusEnum
+app/Notifications/Auth/       — ForgotPasswordNotification, InviteUserNotification, VerifyEmailNotification
+```
 
 **Request flow:** `FormRequest → DTO::from($request->validated()) → Service::handle() → Resource → ApiResponse`
 
 - Form Requests: `app/Http/Requests/Api/V1/Dashboard/{Resource}/`
 - Resources: `app/Http/Resources/Api/V1/Dashboard/{Resource}/`
 
+### Multi-Tenancy (spatie/laravel-multitenancy)
+
+- **Single database** — all tenant-scoped tables have a `tenant_id` FK.
+- **Identification:** `X-Tenant-ID` header (UUID) on every API request except `POST /api/v1/register`.
+- **Middleware:** `EnsureTenant` (`app/Http/Middleware/EnsureTenant.php`) — resolves tenant from header via `HeaderTenantFinder`, calls `$tenant->makeCurrent()`, returns 422 JSON if not found/inactive.
+- **Trait:** `BelongsToTenant` (`app/Traits/BelongsToTenant.php`) — adds global scope `WHERE tenant_id = current` and auto-sets `tenant_id` on model creation. Custom trait (package v4 doesn't ship it).
+- **Tenant migrations** live in `database/migrations/landlord/` and are loaded via `AppServiceProvider::boot()`.
+- `Tenant::current()` is always set after `EnsureTenant` runs.
+
 ### Models
 
-- All models use `HasUuid` trait; route model binding uses `uuid`.
-- `id` and `deleted_at` are hidden from all API responses.
-- Casts defined in `casts()` method (not `$casts` property).
-- Enum casts use `App\Enums\*Enum`; all enums expose `values(): array`.
-- Models with file uploads implement `HasMedia` + `InteractsWithMedia` (spatie/laravel-medialibrary).
-- Models requiring change tracking implement `Auditable` (owen-it/laravel-auditing).
+**Shared rules for all models:**
+- `HasUuid` trait — auto-generates uuid on create; route binding uses `uuid`.
+- `id`, `tenant_id`, `deleted_at` hidden from API responses.
+- Casts in `casts()` method (never `$casts` property).
 - `declare(strict_types=1)` at the top of every app/ PHP file.
+
+**`Tenant`** (`app/Models/Tenant.php`):
+- Extends `Spatie\Multitenancy\Models\Tenant`
+- Traits: `HasUuid`, `SoftDeletes`, `HasFactory`
+- Casts: `status → TenantStatusEnum`
+- Fields: `uuid`, `name`, `slug` (unique), `status`
+
+**`User`** (`app/Models/User.php`):
+- Implements: `Auditable`, `HasMedia`, `MustVerifyEmailContract`
+- Traits: `BelongsToTenant`, `HasApiTokens`, `HasRoles`, `HasUuid`, `InteractsWithMedia`, `MustVerifyEmail`, `Notifiable`, `Auditable`, `SoftDeletes`
+- Casts: `email_verified_at → datetime`, `password → hashed`, `status → UserStatusEnum`
+- Media collection: `avatar` (singleFile, thumb 150×150 nonQueued)
+- `sendEmailVerificationNotification()` overridden to use `VerifyEmailNotification`
+- Status values: `active`, `inactive`, `pending` (pending = invited, hasn't set password yet)
+
+**`UserInvitation`** (`app/Models/UserInvitation.php`):
+- Fields: `tenant_id`, `user_id`, `token` (UUID, unique), `expires_at`, `accepted_at`
+- Relations: `user()`, `tenant()`
 
 ### Service Patterns
 
 - Single-action classes with `handle()` method.
-- Database writes use `DB::transaction(fn() => ..., 3)` — the `3` retries on deadlock.
+- Database writes: `DB::transaction(fn() => ..., 3)` — retries 3x on deadlock.
 - Call `$model->fresh()` before returning after a write.
-- Do NOT wrap code in `try/catch` that only calls `report()` + rethrow — Laravel handles this automatically.
+- Dispatch notifications/emails **outside** the transaction closure (side effects don't belong in transactions).
+- Never `try/catch` that only calls `report()` + rethrow — Laravel handles automatically.
 
 ### DTO Pattern (spatie/laravel-data)
 
@@ -84,92 +122,199 @@ class CreateSomethingData extends Data
         public readonly string $name,
         public readonly string $email,
         #[Hidden]
-        public readonly string $password, // mark sensitive fields Hidden
+        public readonly string $password, // sensitive fields get #[Hidden]
     ) {}
 }
 ```
 
-- No manual `from()` method needed — inherited from `Data`.
-- Use `#[Hidden]` on sensitive fields (e.g. passwords) to exclude from serialization.
+- No manual `from()` — inherited from `Data`.
 - Call via `CreateSomethingData::from($request->validated())`.
 
 ### RBAC (spatie/laravel-permission)
 
-- Guard: `sanctum` (configured in `config/permission.php` and `config/auth.php`).
-- Roles: `admin`, `user` (created by `RoleSeeder`).
-- `User` model uses `HasRoles` trait.
-- Middleware aliases registered in `bootstrap/app.php`: `role`, `permission`, `role_or_permission`.
-- Protected routes use `middleware(['auth:sanctum', 'role:admin'])`.
-- Gates in `HorizonServiceProvider` and `TelescopeServiceProvider` use `$user->hasRole('admin')`.
+- Guard: `sanctum` (in `config/permission.php` and `config/auth.php`).
+- Roles: `admin`, `user` — created by `RoleSeeder` with `guard_name = 'sanctum'`.
+- Traits: `HasRoles` on `User` model.
+- Middleware aliases: `role`, `permission`, `role_or_permission` (in `bootstrap/app.php`).
+- Protected routes: `middleware(['auth:sanctum', 'role:admin'])`.
+- Horizon/Telescope gates: `$user->hasRole('admin')`.
+
+### Auth Flows
+
+All routes require `X-Tenant-ID` header unless noted.
+
+| Endpoint | Middleware | Description |
+|----------|-----------|-------------|
+| `POST /api/v1/register` | **public** | Create new tenant + admin user atomically |
+| `POST /api/v1/login` | ensure_tenant, throttle:auth | Login (blocks unverified + inactive users) |
+| `POST /api/v1/logout` | ensure_tenant, auth:sanctum | Revoke Sanctum token |
+| `GET /api/v1/me` | ensure_tenant, auth:sanctum | Authenticated user data |
+| `POST /api/v1/forgot-password` | ensure_tenant, throttle:auth | Send reset email (no user enumeration) |
+| `POST /api/v1/reset-password` | ensure_tenant, throttle:auth | Reset password (token hashed SHA-256, 1h expiry, auto-verifies email) |
+| `GET /api/v1/email/verify/{uuid}/{hash}` | ensure_tenant | Verify email (signed URL, 60min, named `verification.verify`) |
+| `POST /api/v1/email/resend` | ensure_tenant, auth:sanctum | Resend verification email |
+| `POST /api/v1/admin/users/invite` | ensure_tenant, auth:sanctum, role:admin | Create pending user + send invite (24h token) |
+| `POST /api/v1/invite/accept` | ensure_tenant | Accept invite → set password + verify email |
+
+**Key behaviors:**
+- Login blocks `email_verified_at = null` users.
+- `password_reset_tokens` is tenant-scoped (`(email, tenant_id)` composite PK).
+- Email verification URL uses `uuid` (not integer id) in the signed route.
+- Accepting an invite simultaneously verifies the email and activates the account.
+- `RegisterTenantService` sends verification email after creating the user (outside transaction).
 
 ### Media / File Uploads (spatie/laravel-medialibrary)
 
-- Models with uploads implement `HasMedia`, use `InteractsWithMedia`.
-- Define collections in `registerMediaCollections()` and conversions in `registerMediaConversions()` as separate methods.
-- Use `->singleFile()` on collections that replace (e.g. avatar).
-- Use `->nonQueued()` on conversions that must be synchronous.
-- Default disk: `public`. Switch to S3 via `MEDIA_DISK=s3` in `.env`.
+- Models: implement `HasMedia`, use `InteractsWithMedia`.
+- `registerMediaCollections()` and `registerMediaConversions()` are separate methods.
+- Use `->singleFile()` for replace-on-upload collections (e.g. avatar).
+- Use `->nonQueued()` for synchronous conversions.
+- Default disk: `public`. Production: `MEDIA_DISK=s3`.
 
 ### Response Format
 
-Use `ApiResponse` trait methods — never `response()->json()` directly:
+Always use `ApiResponse` trait — never `response()->json()`:
 - `$this->success(data, message, code, meta)`
 - `$this->created(data, message)`
-- `$this->paginated($paginator, message)` — pagination meta included automatically
+- `$this->paginated($paginator, message)` — pagination meta auto-included
 - `$this->noContent()`
 - `$this->error()`, `$this->notFound()`, `$this->forbidden()`, `$this->unauthorized()`, `$this->validationError()`
 
-Response envelope: `{ success, message, data, meta? }`.
+Envelope: `{ success, message, data, meta? }`.
 
 ### Validation
 
 - Always use Form Requests with `authorize()` returning `true`.
-- Validation messages in Portuguese — never switch to English.
+- Messages in Portuguese — never English.
+- Email uniqueness within tenant: `Rule::unique('users')->where(fn($q) => $q->where('tenant_id', Tenant::current()->getKey()))`.
 
 ### List Services & Filtering
 
-Use `Spatie\QueryBuilder\QueryBuilder` for filtering/sorting. Return via `$this->paginated()`.
+Use `Spatie\QueryBuilder\QueryBuilder`. Return via `$this->paginated()`.
 
-### Export Pattern
+### Export
 
 Use `spatie/simple-excel` for CSV/XLSX.
 
+### Backup (spatie/laravel-backup)
+
+- MySQL dump → zip → S3 (`backups` bucket on MinIO locally).
+- Schedule: `backup:run` at 06:00 and 23:00, `backup:clean` at 00:30.
+- Retention: 7 daily + 4 weekly + 3 monthly + 1 yearly.
+- Notifications on failure: email to `BACKUP_NOTIFICATION_EMAIL`.
+- Config: `config/backup.php`. No file backup — database only, no zip encryption.
+
 ### Testing Conventions
 
-- Authenticate with `Sanctum::actingAs(User::factory()->create())`.
-- Use a local `userPayload(array $overrides = [])` helper for reusable payloads.
-- Tests use `RefreshDatabase`, live under `tests/Feature/Api/V1/Dashboard/`.
-- Role tests: create roles in `beforeEach` with `Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'sanctum'])`.
-- Use `User::factory()->inactive()` for inactive user scenarios.
-- Media tests: `Storage::fake('public')` + `UploadedFile::fake()->image(...)`.
+**Multi-tenancy setup (required in all feature tests that touch Users):**
+```php
+beforeEach(function () {
+    $this->tenant = Tenant::factory()->create();
+    $this->tenant->makeCurrent();
+});
+```
+
+**Helper functions (defined in `tests/Pest.php`):**
+- `tenantActingAs(User $user): User` — calls `$user->tenant->makeCurrent()` + `Sanctum::actingAs($user)`.
+
+**All HTTP requests to tenant routes need the header:**
+```php
+$this->withHeader('X-Tenant-ID', $this->tenant->uuid)->postJson(...)
+```
+
+**Factory states:**
+- `User::factory()->create()` — active + verified (default)
+- `User::factory()->inactive()` — status: inactive
+- `User::factory()->unverified()` — email_verified_at: null
+- `User::factory()->pending()` — status: pending, no password, unverified
+- `Tenant::factory()->inactive()` — status: inactive
+- `UserInvitation::factory()->expired()` — expires_at in the past
+- `UserInvitation::factory()->accepted()` — accepted_at set
+
+**Role setup in tests that use roles:**
+```php
+beforeEach(function () {
+    Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'sanctum']);
+    Role::firstOrCreate(['name' => 'user', 'guard_name' => 'sanctum']);
+});
+```
+
+**Email/notification tests:** use `Notification::fake()` and assert with `Notification::assertSentTo(...)`.
+
+**Current test files (66 tests):**
+
+| File | Tests | What it covers |
+|------|-------|----------------|
+| `AuthTest.php` | 9 | Login, logout, /me, missing header |
+| `RoleTest.php` | 4 | Role assignment, role:admin middleware |
+| `AvatarTest.php` | 3 | Media upload, singleFile |
+| `HealthTest.php` | 4 | /health endpoint, DB check, Redis check |
+| `BackupTest.php` | 3 | backup:clean, health includes Backup check |
+| `TenantModelTest.php` | 7 | Tenant model, HeaderTenantFinder |
+| `TenantRegistrationTest.php` | 6 | POST /register flow |
+| `TenantTest.php` | 6 | Tenant isolation, middleware, cross-tenant |
+| `PasswordResetTest.php` | 5 | Forgot/reset password |
+| `EmailVerificationTest.php` | 6 | Verify/resend, login blocking |
+| `UserInviteTest.php` | 6 | Admin invite, accept invite |
+| `PortugueseLocalizationTest.php` | 6 | pt_BR locale |
+| `ExampleTest.php` | 1 | Sanity check |
+
+---
 
 ## Infrastructure
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| App | `http://localhost` | Laravel API |
-| Mailpit | `http://localhost:8025` | Local email dashboard |
-| Horizon | `http://localhost/horizon` | Queue monitor |
-| Telescope | `http://localhost/telescope` | Debug (local only) |
-| Health | `http://localhost/health` | Health checks (DB, Redis, Horizon, Queue) |
-| API Docs | `http://localhost/docs/api` | Auto-generated OpenAPI |
+| Service | URL | Credentials | Purpose |
+|---------|-----|-------------|---------|
+| App | `http://localhost` | — | Laravel API |
+| Mailpit | `http://localhost:8025` | — | Local email dashboard |
+| MinIO | `http://localhost:9001` | sail / password | S3-compatible storage for backups |
+| Horizon | `http://localhost/horizon` | admin role | Queue monitor |
+| Telescope | `http://localhost/telescope` | admin role | Debug (local only) |
+| Health | `http://localhost/health` | public | DB, Redis, Horizon, Queue, Backup |
+| API Docs | `http://localhost/docs/api` | — | Auto-generated OpenAPI (Scramble) |
+
+---
+
+## Database Schema (tables)
+
+| Table | Purpose |
+|-------|---------|
+| `tenants` | Tenant registry (in `migrations/landlord/`) |
+| `users` | Users — `tenant_id` FK, `email_verified_at`, composite unique `(email, tenant_id)` |
+| `user_invitations` | Pending invites — `token` (UUID), `expires_at`, `accepted_at` |
+| `password_reset_tokens` | Reset tokens — composite PK `(email, tenant_id)`, token stored as SHA-256 hash |
+| `personal_access_tokens` | Sanctum tokens |
+| `roles`, `permissions`, `model_has_roles`, etc. | Spatie permission tables (guard: sanctum) |
+| `media` | Spatie media library |
+| `audits` | Model change tracking |
+| `telescope_entries` | Telescope debug data |
+| `health_check_result_history_items` | Spatie health history |
+| `sessions`, `cache`, `jobs` | Standard Laravel tables |
+
+**Seeders order:** `RoleSeeder` → `TenantSeeder` → `UserSeeder`
+
+Admin user credentials from env: `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_TENANT_SLUG`.
+
+---
 
 ## Key Packages
 
 | Package | Purpose |
 |---------|---------|
-| `spatie/laravel-data` | DTOs — extend `Data`, no manual `from()` |
-| `spatie/laravel-permission` | RBAC — roles/permissions, guard: `sanctum` |
-| `spatie/laravel-medialibrary` | File uploads — collections, conversions |
-| `spatie/laravel-health` | Health endpoint at `/health` |
+| `spatie/laravel-data` | DTOs — extend `Data`, `#[Hidden]` for sensitive fields |
+| `spatie/laravel-permission` | RBAC — guard: `sanctum`, roles: admin/user |
+| `spatie/laravel-medialibrary` | File uploads — collections + conversions |
+| `spatie/laravel-multitenancy` | Multi-tenancy — X-Tenant-ID header, BelongsToTenant |
+| `spatie/laravel-health` | `/health` — DB, Redis, Horizon, Queue, Backup checks |
+| `spatie/laravel-backup` | Automated MySQL backup → MinIO/S3 |
 | `spatie/laravel-query-builder` | Filtering/sorting in list services |
 | `spatie/simple-excel` | CSV/XLSX import/export |
-| `laravel/sanctum` | API token auth |
+| `laravel/sanctum` | API token authentication |
 | `dedoc/scramble` | Auto OpenAPI docs at `/docs/api` |
 | `laravel/horizon` | Queue dashboard at `/horizon` |
 | `laravel/telescope` | Debug dashboard (local only) |
 | `owen-it/laravel-auditing` | Model change tracking |
-| `resend/resend-laravel` | Transactional email |
+| `resend/resend-laravel` | Transactional email (production) |
 | `spatie/laravel-discord-alerts` | Discord webhook alerts |
 | `barryvdh/laravel-ide-helper` | IDE autocomplete |
 
