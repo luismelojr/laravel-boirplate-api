@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -13,6 +14,9 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'sanctum']);
     Role::firstOrCreate(['name' => 'user', 'guard_name' => 'sanctum']);
+
+    $this->tenant = Tenant::factory()->create();
+    $this->tenant->makeCurrent();
 });
 
 it('creates admin and user roles', function () {

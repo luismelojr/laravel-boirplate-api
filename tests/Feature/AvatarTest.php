@@ -1,21 +1,25 @@
 <?php
 
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Sanctum\Sanctum;
-
-use function Pest\Laravel\getJson;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    $this->tenant = Tenant::factory()->create();
+    $this->tenant->makeCurrent();
+});
 
 it('returns empty string for avatar_url when no avatar is uploaded', function () {
     $user = User::factory()->create();
 
-    Sanctum::actingAs($user);
+    tenantActingAs($user);
 
-    $response = getJson('/api/v1/me');
+    $response = $this->withHeader('X-Tenant-ID', $this->tenant->uuid)
+        ->getJson('/api/v1/me');
 
     $response->assertOk()
         ->assertJsonPath('data.avatar_url', '');
@@ -29,9 +33,10 @@ it('stores avatar and returns url via /me', function () {
 
     $user->addMedia($file)->toMediaCollection('avatar');
 
-    Sanctum::actingAs($user);
+    tenantActingAs($user);
 
-    $response = getJson('/api/v1/me');
+    $response = $this->withHeader('X-Tenant-ID', $this->tenant->uuid)
+        ->getJson('/api/v1/me');
 
     $response->assertOk();
     expect($response->json('data.avatar_url'))->not->toBeEmpty();
