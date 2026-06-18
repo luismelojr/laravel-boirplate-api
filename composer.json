@@ -20,6 +20,7 @@
         "resend/resend-laravel": "^1.4",
         "spatie/laravel-data": "^4.23",
         "spatie/laravel-discord-alerts": "^1.9",
+        "spatie/laravel-permission": "^8.0",
         "spatie/laravel-query-builder": "^7.3",
         "spatie/simple-excel": "^3.9"
     },

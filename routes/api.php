@@ -10,4 +10,9 @@ Route::prefix('v1')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
     });
+
+    // Admin-only routes
+    Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+        // Route::apiResource('users', UserController::class);
+    });
 });

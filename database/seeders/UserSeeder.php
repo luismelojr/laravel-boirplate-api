@@ -11,7 +11,7 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        User::firstOrCreate(
+        $user = User::firstOrCreate(
             ['email' => 'junimhs10@gmail.com'],
             [
                 'name' => 'Luis Henrique',
@@ -19,5 +19,7 @@ class UserSeeder extends Seeder
                 'status' => 'active',
             ]
         );
+
+        $user->assignRole('admin');
     }
 }

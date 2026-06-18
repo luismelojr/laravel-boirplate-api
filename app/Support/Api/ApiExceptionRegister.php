@@ -11,6 +11,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Exceptions\UnauthorizedException as SpatieUnauthorizedException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
@@ -88,6 +89,14 @@ class ApiExceptionRegister
             }
 
             return ApiResponseFactory::error('Muitas requisições', 429);
+        });
+
+        $exceptions->render(function (SpatieUnauthorizedException $e, Request $request) {
+            if (! self::shouldHandle($request)) {
+                return null;
+            }
+
+            return ApiResponseFactory::error('Sem permissão', 403);
         });
 
         $exceptions->render(function (QueryException $e, Request $request) {
