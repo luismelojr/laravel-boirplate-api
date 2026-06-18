@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Dashboard;
 
 use App\Domain\Auth\Data\LoginUserData;
+use App\Domain\Auth\Data\RegisterData;
 use App\Domain\Auth\Services\LoginUserService;
 use App\Domain\Auth\Services\LogoutUserService;
+use App\Domain\Auth\Services\RegisterTenantService;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Dashboard\Auth\LoginRequest;
+use App\Http\Requests\Api\V1\Dashboard\Auth\RegisterRequest;
+use App\Http\Resources\Api\V1\Dashboard\Tenant\TenantResource;
 use App\Http\Resources\Api\V1\Dashboard\User\UserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +22,18 @@ use Illuminate\Http\Request;
  */
 class AuthController extends ApiController
 {
+    public function register(RegisterRequest $request, RegisterTenantService $service): JsonResponse
+    {
+        $data = RegisterData::from($request->validated());
+        $result = $service->handle($data);
+
+        return $this->created([
+            'tenant' => new TenantResource($result['tenant']),
+            'user' => new UserResource($result['user']),
+            'token' => $result['token'],
+        ], 'Tenant criado com sucesso');
+    }
+
     public function login(LoginRequest $request, LoginUserService $service): JsonResponse
     {
         $dto = LoginUserData::from($request->validated());
