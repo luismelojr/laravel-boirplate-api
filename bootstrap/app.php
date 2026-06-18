@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withSchedule(function (Schedule $schedule): void {
+        $schedule->command('schedule-monitor:sync')->hourly();
         $schedule->command('health:schedule-check-heartbeat')->everyMinute();
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
         $schedule->command('backup:run')->twiceDaily(6, 23);

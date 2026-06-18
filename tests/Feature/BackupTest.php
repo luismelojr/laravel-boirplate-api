@@ -48,3 +48,15 @@ it('schedule heartbeat command is registered', function () {
 
     expect($heartbeatEvents)->not->toBeEmpty();
 });
+
+it('schedule monitor sync command is registered', function () {
+    Artisan::call('schedule:list');
+
+    $schedule = app(Schedule::class);
+
+    $syncEvents = collect($schedule->events())
+        ->filter(fn ($event) => str_contains($event->command ?? '', 'schedule-monitor:sync'))
+        ->values();
+
+    expect($syncEvents)->not->toBeEmpty();
+});
