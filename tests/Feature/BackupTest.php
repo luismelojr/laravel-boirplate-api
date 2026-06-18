@@ -36,3 +36,15 @@ it('backup schedule is registered for 06:00 and 23:00', function () {
 
     expect($backupEvents)->not->toBeEmpty();
 });
+
+it('schedule heartbeat command is registered', function () {
+    Artisan::call('schedule:list');
+
+    $schedule = app(Schedule::class);
+
+    $heartbeatEvents = collect($schedule->events())
+        ->filter(fn ($event) => str_contains($event->command ?? '', 'health:schedule-check-heartbeat'))
+        ->values();
+
+    expect($heartbeatEvents)->not->toBeEmpty();
+});

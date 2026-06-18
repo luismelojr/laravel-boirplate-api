@@ -14,6 +14,7 @@ use Spatie\Health\Checks\Checks\DatabaseCheck;
 use Spatie\Health\Checks\Checks\HorizonCheck;
 use Spatie\Health\Checks\Checks\QueueCheck;
 use Spatie\Health\Checks\Checks\RedisCheck;
+use Spatie\Health\Checks\Checks\ScheduleCheck;
 use Spatie\Health\Facades\Health;
 
 class AppServiceProvider extends ServiceProvider
@@ -46,6 +47,7 @@ class AppServiceProvider extends ServiceProvider
             HorizonCheck::new(),
             QueueCheck::new(),
             BackupsCheck::new()->name('Backup')->onDisk('s3')->youngestBackShouldHaveBeenMadeBefore(now()->subDays(2)),
+            ScheduleCheck::new(),
         ]);
 
         VerifyEmail::createUrlUsing(function (object $notifiable) {

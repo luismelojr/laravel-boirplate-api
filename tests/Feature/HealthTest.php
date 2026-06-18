@@ -20,6 +20,16 @@ it('health response contains finishedAt and checkResults', function () {
         ->assertJsonStructure(['finishedAt', 'checkResults']);
 });
 
+it('health response contains schedule check result', function () {
+    $response = getJson('/health');
+
+    $response->assertOk();
+
+    $checkNames = collect($response->json('checkResults'))->pluck('name');
+
+    expect($checkNames)->toContain('Schedule');
+});
+
 it('database check reports ok status', function () {
     Health::clearChecks()->checks([DatabaseCheck::new()]);
 
