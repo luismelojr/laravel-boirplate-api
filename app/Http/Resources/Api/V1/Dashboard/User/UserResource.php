@@ -16,7 +16,7 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'status' => $this->status->value,
-            'avatar_url' => $this->avatar_url,
+            'avatar_url' => $this->getFirstMediaUrl('avatar'),
             'created_at' => $this->created_at?->format('d/m/Y H:i:s'),
             'updated_at' => $this->updated_at?->format('d/m/Y H:i:s'),
         ];
