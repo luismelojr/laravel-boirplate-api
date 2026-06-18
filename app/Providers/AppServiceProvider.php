@@ -39,7 +39,7 @@ class AppServiceProvider extends ServiceProvider
             RedisCheck::new(),
             HorizonCheck::new(),
             QueueCheck::new(),
-            BackupsCheck::new()->name('Backup')->onDisk('s3'),
+            BackupsCheck::new()->name('Backup')->onDisk('s3')->youngestBackShouldHaveBeenMadeBefore(now()->subDays(2)),
         ]);
 
         VerifyEmail::createUrlUsing(function (object $notifiable) {

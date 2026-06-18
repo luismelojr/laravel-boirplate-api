@@ -185,7 +185,7 @@ return [
          *
          * When set to 'default', we'll use AES-256 if available on your system.
          */
-        'encryption' => 'default',
+        'encryption' => 'none',
 
         /*
          * After creating the zip, verify it can be opened and contains files.
