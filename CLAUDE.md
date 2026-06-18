@@ -2,142 +2,176 @@
 
 This file provides guidance to Claude Code when working with code in this repository.
 
+**Project root:** `/Users/luis/code/projetos/boirplate`
+
 ## Commands
 
 ```bash
-# Start/stop services (always run from project root)
-bash -c "cd ~/code/boirplates/laravel-api && vendor/bin/sail up -d"
-bash -c "cd ~/code/boirplates/laravel-api && vendor/bin/sail stop"
+# Start/stop services
+vendor/bin/sail up -d
+vendor/bin/sail stop
 
 # Run all tests
-bash -c "cd ~/code/boirplates/laravel-api && vendor/bin/sail artisan test --compact"
+vendor/bin/sail artisan test --compact
 
 # Run a single test file or filter
-bash -c "cd ~/code/boirplates/laravel-api && vendor/bin/sail artisan test --compact --filter=AuthTest"
+vendor/bin/sail artisan test --compact --filter=AuthTest
 
 # Create a Pest test
-bash -c "cd ~/code/boirplates/laravel-api && vendor/bin/sail artisan make:test --pest FeatureName --no-interaction"
+vendor/bin/sail artisan make:test --pest FeatureName --no-interaction
 
 # Run database migrations
-bash -c "cd ~/code/boirplates/laravel-api && vendor/bin/sail artisan migrate"
+vendor/bin/sail artisan migrate --no-interaction
 
 # Seed the database
-bash -c "cd ~/code/boirplates/laravel-api && vendor/bin/sail artisan db:seed"
+vendor/bin/sail artisan db:seed --no-interaction
 
-# Format PHP code (run after every PHP change)
-bash -c "cd ~/code/boirplates/laravel-api && vendor/bin/sail bin pint --dirty --format agent"
+# Format PHP code (run after EVERY PHP change — mandatory)
+vendor/bin/sail bin pint --dirty --format agent
 
 # Clear caches
-bash -c "cd ~/code/boirplates/laravel-api && vendor/bin/sail artisan optimize:clear"
+vendor/bin/sail artisan optimize:clear
 
 # Dev server (serve + queue + pail + vite via concurrently)
-bash -c "cd ~/code/boirplates/laravel-api && vendor/bin/sail composer run dev"
+vendor/bin/sail composer run dev
 ```
 
-> **Note:** All `sail` commands must be run from the project root directory.
-> Use `bash -c "cd ~/code/boirplates/laravel-api && vendor/bin/sail ..."` or `cd` first.
+> **Note:** All `sail` commands run from the project root `/Users/luis/code/projetos/boirplate`.
 
 ## Architecture
 
 ### Domain-Driven Structure
 
 Business logic lives in `app/Domain/{Domain}/` organized into:
-- `Services/` — single-action classes (`handle()` method); one per operation
-- `Data/` — readonly DTOs with a static `from(array $data): self` constructor
+- `Services/` — single-action classes with `handle()` method; one class per operation
+- `Data/` — DTOs extending `Spatie\LaravelData\Data`
 
 ### API Layer
 
-Controllers are grouped under `app/Http/Controllers/Api/V1/Dashboard/`.
+Controllers live under `app/Http/Controllers/Api/V1/Dashboard/` and extend `ApiController` (uses `ApiResponse` trait).
 
-All controllers extend `ApiController` (which uses the `ApiResponse` trait).
-
-Controller request flow: `FormRequest → DTO (Data::from($request->validated())) → Service::handle() → Resource → ApiResponse`.
+**Request flow:** `FormRequest → DTO::from($request->validated()) → Service::handle() → Resource → ApiResponse`
 
 - Form Requests: `app/Http/Requests/Api/V1/Dashboard/{Resource}/`
 - Resources: `app/Http/Resources/Api/V1/Dashboard/{Resource}/`
 
 ### Models
 
-- All models use the `HasUuid` trait; route model binding uses `uuid`.
-- `id` and `deleted_at` are hidden; UUIDs are exposed in all API responses.
-- Casts are defined in a `casts()` method, not a `$casts` property.
-- Enum casts use `App\Enums\*Enum` classes; all enums expose a static `values(): array` helper.
-- Add `declare(strict_types=1);` to new files.
+- All models use `HasUuid` trait; route model binding uses `uuid`.
+- `id` and `deleted_at` are hidden from all API responses.
+- Casts defined in `casts()` method (not `$casts` property).
+- Enum casts use `App\Enums\*Enum`; all enums expose `values(): array`.
+- Models with file uploads implement `HasMedia` + `InteractsWithMedia` (spatie/laravel-medialibrary).
+- Models requiring change tracking implement `Auditable` (owen-it/laravel-auditing).
+- `declare(strict_types=1)` at the top of every app/ PHP file.
 
 ### Service Patterns
 
 - Single-action classes with `handle()` method.
-- Database writes use `DB::transaction(fn() => ..., 3)` — the `3` enables automatic retry on deadlock.
+- Database writes use `DB::transaction(fn() => ..., 3)` — the `3` retries on deadlock.
 - Call `$model->fresh()` before returning after a write.
-- Errors: `report($exception)` then rethrow. Never swallow silently.
+- Do NOT wrap code in `try/catch` that only calls `report()` + rethrow — Laravel handles this automatically.
 
-### DTO Pattern
+### DTO Pattern (spatie/laravel-data)
 
 ```php
-readonly class CreateSomethingData
+use Spatie\LaravelData\Data;
+use Spatie\LaravelData\Attributes\Hidden;
+
+class CreateSomethingData extends Data
 {
     public function __construct(
         public readonly string $name,
         public readonly string $email,
+        #[Hidden]
+        public readonly string $password, // mark sensitive fields Hidden
     ) {}
-
-    public static function from(array $data): self
-    {
-        return new self(
-            name: $data['name'],
-            email: $data['email'],
-        );
-    }
 }
 ```
 
+- No manual `from()` method needed — inherited from `Data`.
+- Use `#[Hidden]` on sensitive fields (e.g. passwords) to exclude from serialization.
+- Call via `CreateSomethingData::from($request->validated())`.
+
+### RBAC (spatie/laravel-permission)
+
+- Guard: `sanctum` (configured in `config/permission.php` and `config/auth.php`).
+- Roles: `admin`, `user` (created by `RoleSeeder`).
+- `User` model uses `HasRoles` trait.
+- Middleware aliases registered in `bootstrap/app.php`: `role`, `permission`, `role_or_permission`.
+- Protected routes use `middleware(['auth:sanctum', 'role:admin'])`.
+- Gates in `HorizonServiceProvider` and `TelescopeServiceProvider` use `$user->hasRole('admin')`.
+
+### Media / File Uploads (spatie/laravel-medialibrary)
+
+- Models with uploads implement `HasMedia`, use `InteractsWithMedia`.
+- Define collections in `registerMediaCollections()` and conversions in `registerMediaConversions()` as separate methods.
+- Use `->singleFile()` on collections that replace (e.g. avatar).
+- Use `->nonQueued()` on conversions that must be synchronous.
+- Default disk: `public`. Switch to S3 via `MEDIA_DISK=s3` in `.env`.
+
 ### Response Format
 
-Use methods from the `ApiResponse` trait — never return `response()->json()` directly:
+Use `ApiResponse` trait methods — never `response()->json()` directly:
 - `$this->success(data, message, code, meta)`
 - `$this->created(data, message)`
-- `$this->paginated($paginator, message)` — includes pagination meta automatically
+- `$this->paginated($paginator, message)` — pagination meta included automatically
 - `$this->noContent()`
 - `$this->error()`, `$this->notFound()`, `$this->forbidden()`, `$this->unauthorized()`, `$this->validationError()`
 
-Response envelope shape: `{ success, message, data, meta? }`.
+Response envelope: `{ success, message, data, meta? }`.
 
 ### Validation
 
 - Always use Form Requests with `authorize()` returning `true`.
-- Keep validation messages in Portuguese — do not switch to English.
+- Validation messages in Portuguese — never switch to English.
 
 ### List Services & Filtering
 
-Use **Spatie Query Builder** (`Spatie\QueryBuilder\QueryBuilder`) for filtering and sorting in list services. Results are paginated and returned via `$this->paginated()`.
+Use `Spatie\QueryBuilder\QueryBuilder` for filtering/sorting. Return via `$this->paginated()`.
 
 ### Export Pattern
 
-Use `spatie/simple-excel` for reading and writing CSV/XLSX files.
-
-### Auditing
-
-Models that require change tracking implement `OwenIt\Auditing\Contracts\Auditable` and use the `OwenIt\Auditing\Auditable` trait.
+Use `spatie/simple-excel` for CSV/XLSX.
 
 ### Testing Conventions
 
-- **API tests**: authenticate with `Sanctum::actingAs(User::factory()->create())`.
-- Use a local helper function (e.g. `userPayload(array $overrides = [])`) for reusable request payloads.
-- Tests use `RefreshDatabase` and live under `tests/Feature/Api/V1/Dashboard/`.
-- Use `User::factory()->inactive()` state to test inactive user scenarios.
+- Authenticate with `Sanctum::actingAs(User::factory()->create())`.
+- Use a local `userPayload(array $overrides = [])` helper for reusable payloads.
+- Tests use `RefreshDatabase`, live under `tests/Feature/Api/V1/Dashboard/`.
+- Role tests: create roles in `beforeEach` with `Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'sanctum'])`.
+- Use `User::factory()->inactive()` for inactive user scenarios.
+- Media tests: `Storage::fake('public')` + `UploadedFile::fake()->image(...)`.
+
+## Infrastructure
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| App | `http://localhost` | Laravel API |
+| Mailpit | `http://localhost:8025` | Local email dashboard |
+| Horizon | `http://localhost/horizon` | Queue monitor |
+| Telescope | `http://localhost/telescope` | Debug (local only) |
+| Health | `http://localhost/health` | Health checks (DB, Redis, Horizon, Queue) |
+| API Docs | `http://localhost/docs/api` | Auto-generated OpenAPI |
 
 ## Key Packages
 
-- **spatie/simple-excel** — import/export CSV/XLSX
-- **spatie/laravel-query-builder** — filtering/sorting in list services
-- **laravel/sanctum** — API token authentication
-- **dedoc/scramble** — automatic OpenAPI docs at `/docs/api`
-- **laravel/horizon** — queue dashboard at `/horizon`
-- **laravel/telescope** — debug dashboard at `/telescope` (local only)
-- **owen-it/laravel-auditing** — model change tracking
-- **resend/resend-laravel** — transactional email
-- **spatie/laravel-discord-alerts** — Discord webhook alerts
-- **barryvdh/laravel-ide-helper** — IDE autocomplete helpers
+| Package | Purpose |
+|---------|---------|
+| `spatie/laravel-data` | DTOs — extend `Data`, no manual `from()` |
+| `spatie/laravel-permission` | RBAC — roles/permissions, guard: `sanctum` |
+| `spatie/laravel-medialibrary` | File uploads — collections, conversions |
+| `spatie/laravel-health` | Health endpoint at `/health` |
+| `spatie/laravel-query-builder` | Filtering/sorting in list services |
+| `spatie/simple-excel` | CSV/XLSX import/export |
+| `laravel/sanctum` | API token auth |
+| `dedoc/scramble` | Auto OpenAPI docs at `/docs/api` |
+| `laravel/horizon` | Queue dashboard at `/horizon` |
+| `laravel/telescope` | Debug dashboard (local only) |
+| `owen-it/laravel-auditing` | Model change tracking |
+| `resend/resend-laravel` | Transactional email |
+| `spatie/laravel-discord-alerts` | Discord webhook alerts |
+| `barryvdh/laravel-ide-helper` | IDE autocomplete |
 
 ===
 
