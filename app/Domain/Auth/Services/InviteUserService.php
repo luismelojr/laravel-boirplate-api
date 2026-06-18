@@ -17,9 +17,9 @@ class InviteUserService
 {
     public function handle(InviteUserData $data): User
     {
-        return DB::transaction(function () use ($data) {
-            $tenant = Tenant::current();
+        $tenant = Tenant::current();
 
+        $result = DB::transaction(function () use ($data, $tenant) {
             $user = User::create([
                 'name' => explode('@', $data->email)[0],
                 'email' => $data->email,
@@ -36,9 +36,11 @@ class InviteUserService
                 'expires_at' => now()->addHours(24),
             ]);
 
-            $user->notify(new InviteUserNotification($invitation->token, $tenant->name));
-
-            return $user->fresh();
+            return ['user' => $user->fresh(), 'invitation' => $invitation];
         }, 3);
+
+        $result['user']->notify(new InviteUserNotification($result['invitation']->token, $tenant->name));
+
+        return $result['user'];
     }
 }

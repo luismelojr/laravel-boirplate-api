@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Dashboard\Auth;
 
+use App\Models\Tenant;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -22,7 +23,7 @@ class InviteUserRequest extends FormRequest
                 'string',
                 'email',
                 'max:255',
-                Rule::unique('users')->where(fn ($query) => $query->where('tenant_id', auth()->user()->tenant_id)),
+                Rule::unique('users')->where(fn ($query) => $query->where('tenant_id', Tenant::current()->getKey())),
             ],
             'role' => ['required', 'string', Rule::in(['admin', 'user'])],
         ];
