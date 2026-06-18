@@ -12,10 +12,10 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $user = User::firstOrCreate(
-            ['email' => 'junimhs10@gmail.com'],
+            ['email' => env('ADMIN_EMAIL', 'admin@boirplate.test')],
             [
-                'name' => 'Luis Henrique',
-                'password' => '3010Rpwt28@',
+                'name' => 'Admin',
+                'password' => env('ADMIN_PASSWORD', 'password'),
                 'status' => 'active',
             ]
         );

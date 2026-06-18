@@ -18,12 +18,12 @@ class LoginUserService
             ->where('email', $data->email)
             ->first();
 
-        if (! $user || ! Hash::check($data->password, $user->password)) {
+        if (! $user || $user->status === UserStatusEnum::Inactive) {
             throw new AuthenticationException('Credenciais inválidas');
         }
 
-        if ($user->status === UserStatusEnum::Inactive) {
-            throw new AuthenticationException('Usuário inativo. Contate o administrador do sistema.');
+        if (! Hash::check($data->password, $user->password)) {
+            throw new AuthenticationException('Credenciais inválidas');
         }
 
         $user->tokens()->where('name', 'auth_token')->delete();
