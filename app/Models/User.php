@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\UserStatusEnum;
+use App\Traits\BelongsToTenant;
 use App\Traits\HasUuid;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,6 +21,8 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements Auditable, HasMedia
 {
+    use BelongsToTenant;
+
     /** @use HasFactory<UserFactory> */
     use HasApiTokens;
 
@@ -37,6 +40,7 @@ class User extends Authenticatable implements Auditable, HasMedia
         'email',
         'password',
         'status',
+        'tenant_id',
     ];
 
     protected $hidden = [

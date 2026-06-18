@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureTenant;
 use App\Support\Api\ApiExceptionRegister;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -21,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'ensure_tenant' => EnsureTenant::class,
         ]);
     })
     ->withSchedule(function (Schedule $schedule): void {
