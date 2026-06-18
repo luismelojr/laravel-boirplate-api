@@ -6,10 +6,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     // Public — no tenant required
-    Route::post('register', [AuthController::class, 'register']);
+    Route::post('register', [AuthController::class, 'register'])->middleware('throttle:10,1');
 
     // All routes below require a valid X-Tenant-ID header
-    Route::middleware('ensure_tenant')->group(function () {
+    Route::middleware(['ensure_tenant', 'throttle:api'])->group(function () {
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:auth');
         Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth');
         Route::post('reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth');
