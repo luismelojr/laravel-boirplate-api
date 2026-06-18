@@ -17,6 +17,7 @@ class ResetPasswordService
         $record = DB::table('password_reset_tokens')
             ->where('email', $data->email)
             ->where('tenant_id', Tenant::current()->getKey())
+            ->where('token', $data->token)
             ->first();
 
         if (! $record || now()->subHour()->isAfter($record->created_at)) {
