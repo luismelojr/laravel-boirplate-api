@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Dashboard\Admin\AdminUserController;
 use App\Http\Controllers\Api\V1\Dashboard\AuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -12,6 +13,7 @@ Route::prefix('v1')->group(function () {
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:auth');
         Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
         Route::post('reset-password', [AuthController::class, 'resetPassword']);
+        Route::post('invite/accept', [AuthController::class, 'acceptInvite']);
 
         Route::get('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
             ->name('verification.verify');
@@ -24,7 +26,7 @@ Route::prefix('v1')->group(function () {
 
         // Admin-only routes
         Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
-            // Route::apiResource('users', UserController::class);
+            Route::post('users/invite', [AdminUserController::class, 'invite']);
         });
     });
 });

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Dashboard;
 
+use App\Domain\Auth\Data\AcceptInviteData;
 use App\Domain\Auth\Data\ForgotPasswordData;
 use App\Domain\Auth\Data\LoginUserData;
 use App\Domain\Auth\Data\RegisterData;
 use App\Domain\Auth\Data\ResetPasswordData;
+use App\Domain\Auth\Services\AcceptInviteService;
 use App\Domain\Auth\Services\ForgotPasswordService;
 use App\Domain\Auth\Services\LoginUserService;
 use App\Domain\Auth\Services\LogoutUserService;
@@ -15,6 +17,7 @@ use App\Domain\Auth\Services\RegisterTenantService;
 use App\Domain\Auth\Services\ResetPasswordService;
 use App\Domain\Auth\Services\VerifyEmailService;
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\Dashboard\Auth\AcceptInviteRequest;
 use App\Http\Requests\Api\V1\Dashboard\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Api\V1\Dashboard\Auth\LoginRequest;
 use App\Http\Requests\Api\V1\Dashboard\Auth\RegisterRequest;
@@ -89,6 +92,17 @@ class AuthController extends ApiController
         $service->resend($request->user());
 
         return $this->success([], 'E-mail de verificação reenviado.');
+    }
+
+    public function acceptInvite(AcceptInviteRequest $request, AcceptInviteService $service): JsonResponse
+    {
+        $data = AcceptInviteData::from($request->validated());
+        $result = $service->handle($data);
+
+        return $this->success([
+            'user' => new UserResource($result['user']),
+            'token' => $result['token'],
+        ], 'Conta ativada com sucesso.');
     }
 
     public function verifyEmail(Request $request, string $id, string $hash, VerifyEmailService $service): JsonResponse
