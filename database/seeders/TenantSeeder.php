@@ -12,9 +12,9 @@ class TenantSeeder extends Seeder
     public function run(): void
     {
         $tenant = Tenant::firstOrCreate(
-            ['slug' => env('ADMIN_TENANT_SLUG', 'default')],
+            ['slug' => config('app.admin_tenant_slug')],
             [
-                'name' => env('ADMIN_TENANT_NAME', 'Default Tenant'),
+                'name' => config('app.admin_tenant_name'),
                 'status' => 'active',
             ]
         );

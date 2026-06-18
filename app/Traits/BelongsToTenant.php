@@ -7,6 +7,7 @@ namespace App\Traits;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Log;
 
 trait BelongsToTenant
 {
@@ -21,10 +22,16 @@ trait BelongsToTenant
         });
 
         static::creating(function ($model): void {
-            $tenant = Tenant::current();
+            if (! Tenant::current()) {
+                Log::warning('BelongsToTenant: creating model without current tenant — tenant_id will be null.', [
+                    'model' => get_class($model),
+                ]);
 
-            if ($tenant && empty($model->tenant_id)) {
-                $model->tenant_id = $tenant->id;
+                return;
+            }
+
+            if (empty($model->tenant_id)) {
+                $model->tenant_id = Tenant::current()->getKey();
             }
         });
     }

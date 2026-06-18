@@ -18,7 +18,13 @@ expect()->extend('toBeOne', function () {
  */
 function tenantActingAs(User $user): User
 {
-    $user->tenant->makeCurrent();
+    $tenant = $user->tenant;
+
+    if (! $tenant) {
+        throw new RuntimeException("User [{$user->uuid}] has no tenant. Call \$tenant->makeCurrent() before creating the user.");
+    }
+
+    $tenant->makeCurrent();
     Sanctum::actingAs($user);
 
     return $user;

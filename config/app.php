@@ -123,4 +123,8 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'admin_tenant_name' => env('ADMIN_TENANT_NAME', 'Default Tenant'),
+
+    'admin_tenant_slug' => env('ADMIN_TENANT_SLUG', 'default'),
+
 ];
