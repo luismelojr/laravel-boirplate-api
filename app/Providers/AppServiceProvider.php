@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Telescope\TelescopeServiceProvider;
 use Spatie\Health\Checks\Checks\DatabaseCheck;
@@ -37,5 +39,16 @@ class AppServiceProvider extends ServiceProvider
             HorizonCheck::new(),
             QueueCheck::new(),
         ]);
+
+        VerifyEmail::createUrlUsing(function (object $notifiable) {
+            return URL::temporarySignedRoute(
+                'verification.verify',
+                now()->addMinutes(60),
+                [
+                    'id' => $notifiable->getKey(),
+                    'hash' => sha1($notifiable->getEmailForVerification()),
+                ]
+            );
+        });
     }
 }

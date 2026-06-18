@@ -26,6 +26,10 @@ class LoginUserService
             throw new AuthenticationException('Credenciais inválidas');
         }
 
+        if (! $user->hasVerifiedEmail()) {
+            throw new AuthenticationException('E-mail não verificado. Verifique sua caixa de entrada.');
+        }
+
         $user->tokens()->where('name', 'auth_token')->delete();
 
         $token = $user->createToken('auth_token')->plainTextToken;

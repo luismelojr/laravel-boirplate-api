@@ -13,6 +13,7 @@ use App\Domain\Auth\Services\LoginUserService;
 use App\Domain\Auth\Services\LogoutUserService;
 use App\Domain\Auth\Services\RegisterTenantService;
 use App\Domain\Auth\Services\ResetPasswordService;
+use App\Domain\Auth\Services\VerifyEmailService;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Dashboard\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Api\V1\Dashboard\Auth\LoginRequest;
@@ -20,6 +21,7 @@ use App\Http\Requests\Api\V1\Dashboard\Auth\RegisterRequest;
 use App\Http\Requests\Api\V1\Dashboard\Auth\ResetPasswordRequest;
 use App\Http\Resources\Api\V1\Dashboard\Tenant\TenantResource;
 use App\Http\Resources\Api\V1\Dashboard\User\UserResource;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -80,5 +82,27 @@ class AuthController extends ApiController
         $service->handle($data);
 
         return $this->success([], 'Senha redefinida com sucesso.');
+    }
+
+    public function resendVerification(Request $request, VerifyEmailService $service): JsonResponse
+    {
+        $service->resend($request->user());
+
+        return $this->success([], 'E-mail de verificação reenviado.');
+    }
+
+    public function verifyEmail(Request $request, string $id, string $hash, VerifyEmailService $service): JsonResponse
+    {
+        if (! $request->hasValidSignature()) {
+            return $this->error('Link de verificação inválido ou expirado.', 403);
+        }
+
+        $user = User::withoutGlobalScopes()->findOrFail($id);
+
+        if (! $service->verify($user, $hash)) {
+            return $this->error('Link de verificação inválido.', 403);
+        }
+
+        return $this->success([], 'E-mail verificado com sucesso.');
     }
 }

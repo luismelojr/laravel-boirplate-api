@@ -40,7 +40,9 @@ class ApiExceptionRegister
                 return null;
             }
 
-            return ApiResponseFactory::error('Não autorizado', 401);
+            $message = $e->getMessage() ?: 'Não autorizado';
+
+            return ApiResponseFactory::error($message, 401);
         });
 
         $exceptions->render(function (AuthorizationException $e, Request $request) {

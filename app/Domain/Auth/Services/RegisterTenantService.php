@@ -32,6 +32,7 @@ class RegisterTenantService
             ]);
 
             $user->assignRole('admin');
+            $user->sendEmailVerificationNotification();
 
             $token = $user->createToken('auth_token')->plainTextToken;
 

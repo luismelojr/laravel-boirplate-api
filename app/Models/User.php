@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\UserStatusEnum;
+use App\Notifications\Auth\VerifyEmailNotification;
 use App\Traits\BelongsToTenant;
 use App\Traits\HasUuid;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -19,7 +22,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable implements Auditable, HasMedia
+class User extends Authenticatable implements Auditable, HasMedia, MustVerifyEmailContract
 {
     use BelongsToTenant;
 
@@ -30,6 +33,7 @@ class User extends Authenticatable implements Auditable, HasMedia
     use HasRoles;
     use HasUuid;
     use InteractsWithMedia;
+    use MustVerifyEmail;
     use Notifiable;
     use \OwenIt\Auditing\Auditable;
     use SoftDeletes;
@@ -38,6 +42,7 @@ class User extends Authenticatable implements Auditable, HasMedia
         'uuid',
         'name',
         'email',
+        'email_verified_at',
         'password',
         'status',
         'tenant_id',
@@ -77,5 +82,10 @@ class User extends Authenticatable implements Auditable, HasMedia
             ->width(150)
             ->height(150)
             ->nonQueued();
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmailNotification);
     }
 }
