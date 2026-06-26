@@ -1,0 +1,15 @@
+interface:
+  display_name: "Nuxt TS Professor"
+  short_description: "Trilha em portugues para dominar Nuxt com TypeScript."
+  default_prompt: "Use $nuxt-typescript-professor para me ensinar Nuxt em portugues, seguindo a trilha estruturada com TypeScript-first."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "nuxt"
+      description: "Nuxt MCP server for official documentation lookups."
+      transport: "streamable_http"
+      url: "https://nuxt.com/mcp"
+
+policy:
+  allow_implicit_invocation: true

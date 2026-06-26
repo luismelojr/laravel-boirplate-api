@@ -8,6 +8,11 @@ use App\Models\User;
 
 class VerifyEmailService
 {
+    public function handle(User $user): void
+    {
+        $this->resend($user);
+    }
+
     public function resend(User $user): void
     {
         $user->sendEmailVerificationNotification();

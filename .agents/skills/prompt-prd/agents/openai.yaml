@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prompt PRD"
+  short_description: "Gera prompt mestre completo de PRD"
+  default_prompt: "Use $prompt-prd to transformar minha ideia em um prompt completo, reutilizando minha stack fixa e gerando os requisitos e a tarefa final corretamente."

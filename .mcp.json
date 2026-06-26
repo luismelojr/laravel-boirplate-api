@@ -6,6 +6,13 @@
                 "artisan",
                 "boost:mcp"
             ]
+        },
+        "nuxt": {
+            "command": "npx",
+            "args": [
+                "mcp-remote",
+                "https://nuxt.com/mcp"
+            ]
         }
     }
 }

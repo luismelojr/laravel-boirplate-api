@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -49,6 +50,10 @@ class AppServiceProvider extends ServiceProvider
             BackupsCheck::new()->name('Backup')->onDisk('s3')->youngestBackShouldHaveBeenMadeBefore(now()->subDays(2)),
             ScheduleCheck::new(),
         ]);
+
+        Gate::define('viewPulse', function ($user) {
+            return $user->hasRole('admin');
+        });
 
         VerifyEmail::createUrlUsing(function (object $notifiable) {
             return URL::temporarySignedRoute(

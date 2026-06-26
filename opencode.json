@@ -12,6 +12,11 @@
                 "artisan",
                 "boost:mcp"
             ]
+        },
+        "nuxt": {
+            "type": "remote",
+            "url": "https://nuxt.com/mcp",
+            "enabled": true
         }
     }
 }
