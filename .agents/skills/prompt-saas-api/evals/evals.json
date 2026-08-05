@@ -1,0 +1,64 @@
+{
+  "skill": "prompt-saas-api",
+  "cases": [
+    {
+      "name": "clinica_estetica_deploy_completo",
+      "prompt": "Use $prompt-saas-api para criar um prompt de PRD para um SaaS API-only de clinicas de estetica chamado MedFlow. Slug medflow_v1, dominio medflow.com, registry ghcr.io/acme/medflow_v1.",
+      "must_include": [
+        "Django REST Framework",
+        "SaaS API-only",
+        "multi-tenant",
+        "Docker Swarm",
+        "Traefik",
+        "Cloudflare DNS-01",
+        "docker stack deploy --with-registry-auth",
+        "medflow_v1_internal",
+        "medflow_v1_egress",
+        "CLOUDFLARE_DNS_API_TOKEN",
+        "SECURE_PROXY_SSL_HEADER",
+        "wait_for_db",
+        "advisory lock",
+        "collectstatic --clear",
+        "scripts/deploy.sh",
+        "scripts/backup.sh"
+      ],
+      "must_not_include": [
+        "React",
+        "Vue",
+        "Next.js",
+        "scsi.digital",
+        "scsi_v1_internal",
+        "celery_worker na rede publica"
+      ]
+    },
+    {
+      "name": "dominio_faltando_usa_identidade_parametrizada",
+      "prompt": "Use $prompt-saas-api para criar um prompt de PRD para um SaaS API-only de gestao financeira B2B chamado LedgerHub.",
+      "must_include": [
+        "ledgerhub",
+        "traefik_public",
+        "ledgerhub_internal",
+        "ledgerhub_egress",
+        "production_domain",
+        "registry_image"
+      ],
+      "must_not_include": [
+        "scsi",
+        "ghcr.io/pycodebr/scsi_v1"
+      ]
+    },
+    {
+      "name": "sem_testes_por_pedido_explicito",
+      "prompt": "Use $prompt-saas-api para criar um prompt de PRD para um SaaS API-only de cursos chamado AulaCore. Nao implementar testes.",
+      "must_include": [
+        "test_policy",
+        "disabled_by_user_request",
+        "validacao manual",
+        "risco tecnico"
+      ],
+      "must_not_include": [
+        "testes minimos obrigatorios para fluxos criticos"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "skill_name": "ideia-saas",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Quero criar um sistema de gestao de barbearia.",
+      "expected_output": "Estrutura completa com diagnostico, MVP, V1, V2, modulos, entidades, fluxos, riscos e entrada pronta para a skill tecnica.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Quero criar um SaaS para imobiliarias com captacao de leads, visitas, corretores e contratos.",
+      "expected_output": "Analise estrategica com recorte de escopo, modulos do dominio imobiliario, relatorios, riscos e integracoes provaveis.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Quero criar uma plataforma para cursos online, mas ainda nao sei exatamente o que entra no MVP.",
+      "expected_output": "Visao estruturada do produto com sugestao de MVP enxuto, diferencas entre MVP, V1 e V2 e uso criterioso de IA.",
+      "files": []
+    }
+  ]
+}

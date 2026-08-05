@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prompt SaaS API"
+  short_description: "Gera prompt mestre de PRD para SaaS Django API-only com deploy profissional."
+  default_prompt: "Use $prompt-saas-api para transformar minha ideia em um prompt tecnico completo de PRD para um SaaS Django API-only, mantendo a stack fixa e gerando deploy profissional com Docker Swarm, Traefik, Cloudflare, GHCR, Celery, RabbitMQ e Redis."

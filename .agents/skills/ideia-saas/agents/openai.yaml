@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ideia SaaS"
+  short_description: "Estrutura a visao de produto antes da skill tecnica."
+  default_prompt: "Use $ideia-saas para transformar minha ideia bruta de SaaS em uma visao de produto estruturada, com MVP, V1, V2, modulos, entidades, fluxos, riscos e uma entrada pronta para a skill tecnica."
